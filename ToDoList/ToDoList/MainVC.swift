@@ -6,51 +6,102 @@
 //
 
 import UIKit
+import CoreData
 
-class MainVC: UITableViewController {
+class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
-    var tasks: [String] = []
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+
+    
+    //Create Table
+    let tableV: UITableView = {
+       let table = UITableView()
+        table.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        return table
+    }()
+    
+    private var models = [Tasks]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        title = "To Do List"
+        view.addSubview(tableV)
+        tableV.dataSource = self
+        tableV.frame = view.bounds
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapAdd))
     }
-
-    override func numberOfSections(in tableView: UITableView) -> Int {
     
-        return 0
+    @objc func didTapAdd() {
+        let alert = UIAlertController(title: "Новая задача", message: "Введите новую задачу", preferredStyle: .alert)
+        alert.addTextField(configurationHandler: nil)
+        alert.addAction(UIAlertAction(title: "Сохранить", style: .cancel, handler: { [weak self] _ in
+            guard let field = alert.textFields?.first, let text = field.text, !text.isEmpty else {
+                return
+            }
+            self?.createTasks(name: text)
+        }))
     }
-
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
     
-        return tasks.count
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return models.count
     }
-
-   
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let model = models[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        cell.textLabel?.text = tasks[indexPath.row]
-
-
+        cell.textLabel?.text = model.title
         return cell
     }
-    @IBAction func addTask(_ sender: UIBarButtonItem) {
-        let alertController = UIAlertController(title: "New Task", message: "Enter Task", preferredStyle: .alert)
-        let saveTask = UIAlertAction(title: "Save Task", style: .default) { action in
-            let textField = alertController.textFields?.first
-            if let newTask = textField?.text {
-                self.tasks.insert(newTask, at: 0)
-                self.tableView.reloadData()
+
+    
+    
+    
+    // MARK: CoreData
+    
+    func getAllTasks() {
+        
+        do {
+            models = try context.fetch(Tasks.fetchRequest())
+            DispatchQueue.main.async {
+                self.tableV.reloadData()
             }
+        } catch  {
+            // Error
         }
-        
-        alertController.addTextField { _ in }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .default) { _ in }
-        
-        alertController.addAction(saveTask)
-        alertController.addAction(cancelAction)
-        
-        present(alertController, animated: true, completion: nil)
     }
     
+    func createTasks(name: String) {
+        let newTasks = Tasks(context: context)
+        newTasks.title = title
+        newTasks.createdDate = Date()
+        
+        do {
+            try context.save()
+            getAllTasks()
+        } catch {
+            
+        }
+        
+    }
+    
+    func deleteTasks(tasks: Tasks) {
+        context.delete(tasks)
+        do {
+            try context.save()
+        } catch {
+            
+        }
+
+        
+    }
+    
+    func updateTasks(tasks: Tasks, newName: String) {
+        tasks.title = newName
+        do {
+            try context.save()
+        } catch {
+            
+        }
+    }
 }
