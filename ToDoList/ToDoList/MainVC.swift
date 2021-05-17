@@ -27,7 +27,9 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
         super.viewDidLoad()
         title = "To Do List"
         view.addSubview(tableV)
+        getAllTasks()
         tableV.dataSource = self
+        tableV.delegate = self
         tableV.frame = view.bounds
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapAdd))
     }
@@ -41,6 +43,7 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
             }
             self?.createTasks(name: text)
         }))
+        present(alert, animated: true)
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -54,7 +57,30 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
         return cell
     }
 
-    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let item = models[indexPath.row]
+        let sheet = UIAlertController(title: "Редактировать", message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: "Редактировать", style: .default, handler: { _ in
+            
+            let alert = UIAlertController(title: "Редактировать задачу", message: "Редактировать вашу задачу", preferredStyle: .alert)
+            alert.addTextField(configurationHandler: nil)
+            alert.textFields?.first?.text = item.title
+            alert.addAction(UIAlertAction(title: "Сохранить", style: .cancel, handler: { [weak self] _ in
+                guard let field = alert.textFields?.first, let newName = field.text, !newName.isEmpty else {
+                    return
+                }
+                self?.updateTasks(tasks: item, newName: newName)
+            }))
+         
+            self.present(alert, animated: true)
+        }))
+        sheet.addAction(UIAlertAction(title: "Удалить", style: .destructive, handler: { [weak self] _ in
+            self?.deleteTasks(tasks: item)
+        }))
+        present(sheet,animated: true)
+    }
     
     
     // MARK: CoreData
